@@ -1,5 +1,6 @@
 package com.push.dev.demo_weatherapp.ui.screen
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -79,12 +80,26 @@ fun WeatherScreen(
                 LoadingContent()
             }
             is WeatherUiState.Success -> {
-                WeatherContent(
-                    weatherData = state.weatherData,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                )
+                ) {
+                    WeatherContent(
+                        weatherData = state.weatherData,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    if (state.forecast.isNotEmpty()) {
+                        ForecastDaySelector(
+                            days = state.forecast,
+                            selectedIndex = state.selectedIndex,
+                            onDaySelected = { index -> viewModel.selectForecastDay(index) }
+                        )
+                    }
+                }
             }
             is WeatherUiState.Error -> {
                 ErrorContent(
@@ -96,6 +111,61 @@ fun WeatherScreen(
                     },
                     onDismiss = { viewModel.clearError() }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForecastDaySelector(
+    days: List<com.push.dev.demo_weatherapp.domain.model.WeatherData>,
+    selectedIndex: Int,
+    onDaySelected: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        Text(
+            text = "Next 7 days",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            days.forEachIndexed { index, dayWeather ->
+                val isSelected = index == selectedIndex
+                FilledTonalButton(
+                    onClick = { onDaySelected(index) },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (isSelected)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (isSelected)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 72.dp)
+                ) {
+                    val dateText = remember(dayWeather.lastUpdated) {
+                        val sdf = java.text.SimpleDateFormat("EEE\ndd", java.util.Locale.getDefault())
+                        sdf.format(java.util.Date(dayWeather.lastUpdated))
+                    }
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }

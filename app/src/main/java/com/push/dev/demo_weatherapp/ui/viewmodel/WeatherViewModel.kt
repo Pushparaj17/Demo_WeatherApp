@@ -30,6 +30,8 @@ class WeatherViewModel @Inject constructor(
     application: Application,
     private val getWeatherByCoordinatesUseCase: GetWeatherByCoordinatesUseCase,
     private val getWeatherByCityNameUseCase: GetWeatherByCityNameUseCase,
+    private val getForecastByCoordinatesUseCase: com.push.dev.demo_weatherapp.domain.usecase.GetForecastByCoordinatesUseCase,
+    private val getForecastByCityNameUseCase: com.push.dev.demo_weatherapp.domain.usecase.GetForecastByCityNameUseCase,
     private val locationHelper: LocationHelper,
     private val dataStoreHelper: DataStoreHelper
 ) : AndroidViewModel(application) {
@@ -40,21 +42,32 @@ class WeatherViewModel @Inject constructor(
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(application)
     
-    init {
-        loadLastSearchedCity()
-    }
+    private var hasInitialized = false
     
     /**
-     * Load last searched city on app launch
+     * Initialize on app launch
+     * Priority: Saved city > Location (first time only) > Idle
      */
-    private fun loadLastSearchedCity() {
+    fun initializeOnLaunch(hasLocationPermission: Boolean) {
+        if (hasInitialized) return
+        hasInitialized = true
+        
         viewModelScope.launch {
             try {
                 val lastCity = dataStoreHelper.getLastCitySync()
+                
                 if (lastCity != null) {
+                    // If there's a saved city, load it (don't use location)
                     searchWeatherByCity(lastCity)
                 } else {
-                    _uiState.value = WeatherUiState.Idle
+                    // First time launch - no saved city
+                    // Try location if permission granted, otherwise show idle
+                    // Don't save location city on first launch
+                    if (hasLocationPermission) {
+                        fetchWeatherByLocation(saveCity = false)
+                    } else {
+                        _uiState.value = WeatherUiState.Idle
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = WeatherUiState.Idle
@@ -92,18 +105,61 @@ class WeatherViewModel @Inject constructor(
     
     /**
      * Fetch weather using coordinates (preferred method)
+     * @param saveCity If true, saves the city name to DataStore. Set to false for location-based fetches on first launch.
      */
     private suspend fun fetchWeatherByCoordinates(
         latitude: Double,
         longitude: Double,
-        cityName: String
+        cityName: String,
+        saveCity: Boolean = true
     ) {
         when (val result = getWeatherByCoordinatesUseCase(latitude, longitude)) {
             is Resource.Success -> {
                 val weatherData = result.data
-                // Save city name to DataStore
-                dataStoreHelper.saveLastCity(cityName)
-                _uiState.value = WeatherUiState.Success(weatherData)
+                // Fetch forecast for 7 days
+                val forecastResult = getForecastByCoordinatesUseCase(latitude, longitude)
+                val forecast = when (forecastResult) {
+                    is Resource.Success -> {
+                        // Ensure we have 7 days, pad if needed
+                        val forecastList = forecastResult.data
+                        if (forecastList.size >= 7) {
+                            forecastList.take(7)
+                        } else {
+                            // If forecast has fewer than 7 days, pad with current weather
+                            val padded = forecastList.toMutableList()
+                            while (padded.size < 7) {
+                                val lastDay = padded.lastOrNull() ?: weatherData
+                                val oneDayMillis = 24L * 60L * 60L * 1000L
+                                padded.add(
+                                    lastDay.copy(
+                                        lastUpdated = lastDay.lastUpdated + (padded.size * oneDayMillis)
+                                    )
+                                )
+                            }
+                            padded.take(7)
+                        }
+                    }
+                    else -> {
+                        // Fallback to building forecast from current weather
+                        buildSevenDayForecast(weatherData)
+                    }
+                }
+                
+                // Save city name to DataStore only if saveCity is true
+                if (saveCity) {
+                    val cityToSave = if (cityName.isNotBlank()) {
+                        cityName
+                    } else {
+                        weatherData.cityName
+                    }
+                    dataStoreHelper.saveLastCity(cityToSave)
+                }
+                
+                _uiState.value = WeatherUiState.Success(
+                    weatherData = weatherData,
+                    forecast = forecast,
+                    selectedIndex = 0
+                )
             }
             is Resource.Error -> {
                 _uiState.value = WeatherUiState.Error(result.error)
@@ -121,9 +177,41 @@ class WeatherViewModel @Inject constructor(
         when (val result = getWeatherByCityNameUseCase(cityName)) {
             is Resource.Success -> {
                 val weatherData = result.data
+                // Try to fetch forecast by city name
+                val forecastResult = getForecastByCityNameUseCase(cityName)
+                val forecast = when (forecastResult) {
+                    is Resource.Success -> {
+                        val forecastList = forecastResult.data
+                        if (forecastList.size >= 7) {
+                            forecastList.take(7)
+                        } else {
+                            // Pad if needed
+                            val padded = forecastList.toMutableList()
+                            while (padded.size < 7) {
+                                val lastDay = padded.lastOrNull() ?: weatherData
+                                val oneDayMillis = 24L * 60L * 60L * 1000L
+                                padded.add(
+                                    lastDay.copy(
+                                        lastUpdated = lastDay.lastUpdated + (padded.size * oneDayMillis)
+                                    )
+                                )
+                            }
+                            padded.take(7)
+                        }
+                    }
+                    else -> {
+                        // Fallback to building forecast from current weather
+                        buildSevenDayForecast(weatherData)
+                    }
+                }
+                
                 // Save city name to DataStore
                 dataStoreHelper.saveLastCity(cityName)
-                _uiState.value = WeatherUiState.Success(weatherData)
+                _uiState.value = WeatherUiState.Success(
+                    weatherData = weatherData,
+                    forecast = forecast,
+                    selectedIndex = 0
+                )
             }
             is Resource.Error -> {
                 _uiState.value = WeatherUiState.Error(result.error)
@@ -136,8 +224,9 @@ class WeatherViewModel @Inject constructor(
     
     /**
      * Fetch weather using device location
+     * @param saveCity If true, saves the location city to DataStore. Set to false for first launch.
      */
-    fun fetchWeatherByLocation() {
+    fun fetchWeatherByLocation(saveCity: Boolean = true) {
         viewModelScope.launch {
             _uiState.value = WeatherUiState.Loading
             
@@ -149,7 +238,8 @@ class WeatherViewModel @Inject constructor(
                             fetchWeatherByCoordinates(
                                 location.latitude,
                                 location.longitude,
-                                "" // Will be resolved from coordinates
+                                "", // Will be resolved from coordinates
+                                saveCity = saveCity
                             )
                         } else {
                             _uiState.value = WeatherUiState.Error(
@@ -184,6 +274,33 @@ class WeatherViewModel @Inject constructor(
             _uiState.value = WeatherUiState.Idle
         }
     }
+
+    /**
+     * Handle selection of a specific forecast day (by index 0..6)
+     */
+    fun selectForecastDay(index: Int) {
+        val current = _uiState.value
+        if (current is WeatherUiState.Success && index in current.forecast.indices) {
+            val selectedWeather = current.forecast[index]
+            _uiState.value = current.copy(
+                weatherData = selectedWeather,
+                selectedIndex = index
+            )
+        }
+    }
+
+    /**
+     * Build a simple 7-day list based on the current day's weather.
+     * Used as fallback when forecast API is unavailable.
+     */
+    private fun buildSevenDayForecast(base: WeatherData): List<WeatherData> {
+        val oneDayMillis = 24L * 60L * 60L * 1000L
+        return (0..6).map { offset ->
+            base.copy(
+                lastUpdated = base.lastUpdated + offset * oneDayMillis
+            )
+        }
+    }
 }
 
 /**
@@ -192,7 +309,11 @@ class WeatherViewModel @Inject constructor(
 sealed class WeatherUiState {
     object Idle : WeatherUiState()
     object Loading : WeatherUiState()
-    data class Success(val weatherData: WeatherData) : WeatherUiState()
+    data class Success(
+        val weatherData: WeatherData,
+        val forecast: List<WeatherData> = emptyList(),
+        val selectedIndex: Int = 0
+    ) : WeatherUiState()
     data class Error(val error: WeatherError) : WeatherUiState()
 }
 

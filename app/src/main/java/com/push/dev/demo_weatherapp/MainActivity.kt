@@ -61,17 +61,8 @@ class MainActivity : ComponentActivity() {
             }
         }
         
-        // Check location permission on launch
-        checkLocationPermissionOnLaunch()
-    }
-    
-    /**
-     * Check location permission on app launch
-     */
-    private fun checkLocationPermissionOnLaunch() {
-        if (hasLocationPermission()) {
-            viewModel.fetchWeatherByLocation()
-        }
+        // Initialize ViewModel with location permission status
+        viewModel.initializeOnLaunch(hasLocationPermission())
     }
     
     /**

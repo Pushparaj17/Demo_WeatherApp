@@ -1,0 +1,18 @@
+package com.push.dev.demo_weatherapp.domain.usecase
+
+import com.push.dev.demo_weatherapp.data.repository.WeatherRepository
+import com.push.dev.demo_weatherapp.domain.model.WeatherData
+import com.push.dev.demo_weatherapp.utils.Resource
+import javax.inject.Inject
+
+/**
+ * Use case for fetching forecast by city name
+ */
+class GetForecastByCityNameUseCase @Inject constructor(
+    private val repository: WeatherRepository
+) {
+    suspend operator fun invoke(cityName: String): Resource<List<WeatherData>> {
+        return repository.getForecastByCityName(cityName)
+    }
+}
+
