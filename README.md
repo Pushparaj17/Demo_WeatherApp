@@ -1,26 +1,16 @@
-Weather App
+# Weather App
 
 Simple native Android weather app built using Kotlin + Jetpack Compose with MVVM and Clean Architecture.
 
 Uses OpenWeatherMap API to fetch weather by city name or current location.
 
-Features
+# Features
 
-Search weather by city name
+Search weather by city name or zip code
 
 Fetch weather using device location
 
-Shows:
-
-Temperature
-
-Weather description
-
-Humidity
-
-Wind speed
-
-Weather icon
+Shows Temperature, Weather description, Humidity, Wind speed, Weather icon
 
 Caches icons using Coil
 
@@ -28,7 +18,7 @@ Saves last searched city (DataStore)
 
 Handles API + network errors
 
-Tech Stack
+# Tech Stack
 
 Kotlin
 
@@ -52,32 +42,26 @@ Google Play Location
 
 JUnit / Mockito / MockK
 
-Architecture
+# Architecture
 
 Clean Architecture + MVVM.
 
-data/      -> API, models, repository
-domain/    -> business logic (use cases, domain models)
-ui/        -> compose screens + viewmodels
-di/        -> hilt modules
-utils/     -> helpers
+data      -> API, models, repository
 
+domain    -> business logic (use cases, domain models)
 
-Project Structure
-app/
- ├── data/
- ├── domain/
- ├── ui/
- ├── di/
- ├── utils/
- └── MainActivity.kt
+ui        -> compose screens + viewmodels
+
+di        -> hilt modules
+
+utils     -> helpers
  
-Testing
+# Testing
 
-Run unit tests:
+## Run unit tests
 
 ./gradlew test
 
-Run UI tests:
+## Run UI tests
 
 ./gradlew connectedAndroidTest
