@@ -20,3 +20,4 @@ class GetWeatherByCoordinatesUseCase @Inject constructor(
     }
 }
 
+

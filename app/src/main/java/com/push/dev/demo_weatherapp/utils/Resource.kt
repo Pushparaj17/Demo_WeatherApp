@@ -10,3 +10,4 @@ sealed class Resource<out T> {
     object Loading : Resource<Nothing>()
 }
 
+

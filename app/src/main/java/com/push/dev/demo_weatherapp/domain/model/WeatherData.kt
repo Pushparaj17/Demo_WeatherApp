@@ -27,3 +27,4 @@ sealed class WeatherError(message: String) {
     data class UnknownError(val message: String) : WeatherError(message)
 }
 
+

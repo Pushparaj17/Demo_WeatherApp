@@ -1,5 +1,6 @@
 package com.push.dev.demo_weatherapp.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,17 +9,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.push.dev.demo_weatherapp.R
-import com.push.dev.demo_weatherapp.ui.components.WeatherContent
-import com.push.dev.demo_weatherapp.ui.components.SearchBar
-import com.push.dev.demo_weatherapp.ui.viewmodel.WeatherViewModel
-import com.push.dev.demo_weatherapp.ui.viewmodel.WeatherUiState
 import com.push.dev.demo_weatherapp.domain.model.WeatherError
+import com.push.dev.demo_weatherapp.ui.components.SearchBar
+import com.push.dev.demo_weatherapp.ui.components.WeatherContent
+import com.push.dev.demo_weatherapp.ui.viewmodel.WeatherUiState
+import com.push.dev.demo_weatherapp.ui.viewmodel.WeatherViewModel
 
 /**
  * Main weather screen composable
@@ -34,13 +36,21 @@ fun WeatherScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // App title at the top
         Text(
             text = stringResource(id = R.string.app_name),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,7 +173,8 @@ private fun ForecastDaySelector(
                     }
                     Text(
                         text = dateText,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }
@@ -175,15 +186,23 @@ private fun ForecastDaySelector(
 private fun IdleContent() {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
             .testTag("idle_content"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Search for a US city or use your location",
+            text = "Welcome to Weather App",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Search for a US city or use your location to get started.",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
@@ -237,7 +256,8 @@ private fun ErrorContent(
             Text(
                 text = errorMessage,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(
