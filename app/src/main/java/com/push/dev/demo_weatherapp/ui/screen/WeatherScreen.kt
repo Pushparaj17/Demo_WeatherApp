@@ -8,9 +8,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.push.dev.demo_weatherapp.R
 import com.push.dev.demo_weatherapp.ui.components.WeatherContent
 import com.push.dev.demo_weatherapp.ui.components.SearchBar
 import com.push.dev.demo_weatherapp.ui.viewmodel.WeatherViewModel
@@ -34,20 +36,37 @@ fun WeatherScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Search bar
-        SearchBar(
-            query = searchQuery,
-            onQueryChange = { searchQuery = it },
-            onSearch = {
-                if (searchQuery.isNotBlank()) {
-                    viewModel.searchWeatherByCity(searchQuery.trim())
-                }
-            },
-            onLocationClick = {
-                onRequestLocationPermission()
-            },
-            modifier = Modifier.fillMaxWidth()
+        // App title at the top
+        Text(
+            text = stringResource(id = R.string.app_name),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 16.dp)
+                .wrapContentWidth(Alignment.CenterHorizontally)
         )
+
+        // Search bar centered horizontally
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = {
+                    if (searchQuery.isNotBlank()) {
+                        viewModel.searchWeatherByCity(searchQuery.trim())
+                    }
+                },
+                onLocationClick = {
+                    onRequestLocationPermission()
+                },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            )
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
         
