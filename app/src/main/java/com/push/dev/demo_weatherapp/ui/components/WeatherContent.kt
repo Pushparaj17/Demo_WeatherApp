@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +32,16 @@ fun WeatherContent(
     weatherData: WeatherData,
     modifier: Modifier = Modifier
 ) {
+    val formattedDate = remember(weatherData.lastUpdated) {
+        formatTimestamp(weatherData.lastUpdated)
+    }
+
+    val descriptionText = remember(weatherData.description) {
+        weatherData.description.replaceFirstChar {
+            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+        }
+    }
+
     Card(
         modifier = modifier
             .testTag("weather_card")
@@ -62,7 +73,7 @@ fun WeatherContent(
             
             // Last updated time
             Text(
-                text = formatTimestamp(weatherData.lastUpdated),
+                text = formattedDate,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("last_updated")
@@ -115,9 +126,7 @@ fun WeatherContent(
                 modifier = Modifier.padding(vertical = 4.dp)
             ) {
                 Text(
-                    text = weatherData.description.replaceFirstChar { 
-                        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
-                    },
+                    text = descriptionText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -199,3 +208,4 @@ private fun formatTimestamp(timestamp: Long): String {
     val sdf = SimpleDateFormat("EEEE, MMM dd", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
+

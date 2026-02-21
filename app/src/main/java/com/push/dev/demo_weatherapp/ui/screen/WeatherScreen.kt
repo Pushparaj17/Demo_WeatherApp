@@ -7,9 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -31,19 +31,23 @@ fun WeatherScreen(
     onRequestLocationPermission: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     
+    val colorTop = MaterialTheme.colorScheme.primaryContainer
+    val colorBottom = MaterialTheme.colorScheme.background
+    val backgroundBrush = remember(colorTop, colorBottom) {
+        androidx.compose.ui.graphics.Brush.verticalGradient(
+            colors = listOf(
+                colorTop.copy(alpha = 0.4f),
+                colorBottom
+            )
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        MaterialTheme.colorScheme.background
-                    )
-                )
-            )
+            .background(backgroundBrush)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

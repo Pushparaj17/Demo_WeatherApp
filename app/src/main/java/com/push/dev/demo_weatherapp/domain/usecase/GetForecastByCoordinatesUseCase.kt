@@ -20,3 +20,4 @@ class GetForecastByCoordinatesUseCase @Inject constructor(
 }
 
 
+
