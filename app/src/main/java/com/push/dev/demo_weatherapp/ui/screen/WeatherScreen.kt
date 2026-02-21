@@ -99,19 +99,40 @@ fun WeatherScreen(
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    WeatherContent(
-                        weatherData = state.weatherData,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    key(state.weatherData.lastUpdated, state.selectedIndex, state.selectedHourlyIndex) {
+                        WeatherContent(
+                            weatherData = state.weatherData,
+                            showTimeOnly = state.showHourlyForecast,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    if (state.forecast.isNotEmpty()) {
-                        ForecastDaySelector(
-                            days = state.forecast,
-                            selectedIndex = state.selectedIndex,
-                            onDaySelected = { index -> viewModel.selectForecastDay(index) }
+                    if (state.forecast.isNotEmpty() || state.hourlyToday.isNotEmpty()) {
+                        ForecastViewToggle(
+                            showHourlyForecast = state.showHourlyForecast,
+                            hasHourlyData = state.hourlyToday.isNotEmpty(),
+                            onToggle = { viewModel.setShowHourlyForecast(it) }
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    when {
+                        state.showHourlyForecast && state.hourlyToday.isNotEmpty() -> {
+                            HourlyForecastSelector(
+                                hours = state.hourlyToday,
+                                selectedIndex = state.selectedHourlyIndex,
+                                onHourSelected = { viewModel.selectHourlySlot(it) }
+                            )
+                        }
+                        state.forecast.isNotEmpty() -> {
+                            ForecastDaySelector(
+                                days = state.forecast,
+                                selectedIndex = state.selectedIndex,
+                                onDaySelected = { index -> viewModel.selectForecastDay(index) }
+                            )
+                        }
                     }
                 }
             }
@@ -131,6 +152,96 @@ fun WeatherScreen(
 }
 
 @Composable
+private fun ForecastViewToggle(
+    showHourlyForecast: Boolean,
+    hasHourlyData: Boolean,
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = !showHourlyForecast,
+            onClick = { onToggle(false) },
+            label = { Text(stringResource(R.string.forecast_next_7_days)) },
+            modifier = Modifier.weight(1f)
+        )
+        FilterChip(
+            selected = showHourlyForecast,
+            onClick = { if (hasHourlyData) onToggle(true) },
+            enabled = hasHourlyData,
+            label = { Text(stringResource(R.string.forecast_rest_of_today)) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun HourlyForecastSelector(
+    hours: List<com.push.dev.demo_weatherapp.domain.model.WeatherData>,
+    selectedIndex: Int,
+    onHourSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.forecast_today_until_midnight),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            hours.forEachIndexed { index, hourWeather ->
+                val isSelected = index == selectedIndex
+                FilledTonalButton(
+                    onClick = { onHourSelected(index) },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (isSelected)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (isSelected)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.defaultMinSize(minWidth = 72.dp)
+                ) {
+                    val timeText = remember(hourWeather.lastUpdated) {
+                        val sdf = java.text.SimpleDateFormat("h a", java.util.Locale.getDefault())
+                        sdf.format(java.util.Date(hourWeather.lastUpdated))
+                    }
+                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        Text(
+                            text = timeText,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Text(
+                            text = "${hourWeather.temperature.toInt()}°",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ForecastDaySelector(
     days: List<com.push.dev.demo_weatherapp.domain.model.WeatherData>,
     selectedIndex: Int,
@@ -142,7 +253,7 @@ private fun ForecastDaySelector(
             .padding(top = 8.dp)
     ) {
         Text(
-            text = "Next 7 days",
+            text = stringResource(R.string.forecast_next_7_days),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -197,13 +308,13 @@ private fun IdleContent() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Welcome to Weather App",
+            text = stringResource(R.string.idle_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Search for a US city or use your location to get started.",
+            text = stringResource(R.string.idle_message),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -242,7 +353,7 @@ private fun ErrorContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Error",
+                text = stringResource(R.string.error_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onErrorContainer
@@ -268,10 +379,10 @@ private fun ErrorContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(onClick = onDismiss) {
-                    Text("Dismiss")
+                    Text(stringResource(R.string.dismiss))
                 }
                 Button(onClick = onRetry) {
-                    Text("Retry")
+                    Text(stringResource(R.string.retry))
                 }
             }
         }

@@ -116,33 +116,19 @@ class WeatherViewModel @Inject constructor(
         when (val result = getWeatherByCoordinatesUseCase(latitude, longitude)) {
             is Resource.Success -> {
                 val weatherData = result.data
-                // Fetch forecast for 7 days
                 val forecastResult = getForecastByCoordinatesUseCase(latitude, longitude)
-                val forecast = when (forecastResult) {
+                val (daily, hourlyToday) = when (forecastResult) {
                     is Resource.Success -> {
-                        // Ensure we have 7 days, pad if needed
-                        val forecastList = forecastResult.data
-                        if (forecastList.size >= 7) {
-                            forecastList.take(7)
+                        val data = forecastResult.data
+                        val dailyList = if (data.daily.isNotEmpty()) {
+                            if (data.daily.size >= 7) data.daily.take(7)
+                            else data.daily
                         } else {
-                            // If forecast has fewer than 7 days, pad with current weather
-                            val padded = forecastList.toMutableList()
-                            while (padded.size < 7) {
-                                val lastDay = padded.lastOrNull() ?: weatherData
-                                val oneDayMillis = 24L * 60L * 60L * 1000L
-                                padded.add(
-                                    lastDay.copy(
-                                        lastUpdated = lastDay.lastUpdated + (padded.size * oneDayMillis)
-                                    )
-                                )
-                            }
-                            padded.take(7)
+                            buildSevenDayForecast(weatherData)
                         }
+                        Pair(dailyList, data.hourlyToday)
                     }
-                    else -> {
-                        // Fallback to building forecast from current weather
-                        buildSevenDayForecast(weatherData)
-                    }
+                    else -> Pair(buildSevenDayForecast(weatherData), emptyList())
                 }
                 
                 // Save city name to DataStore only if saveCity is true
@@ -157,8 +143,10 @@ class WeatherViewModel @Inject constructor(
                 
                 _uiState.value = WeatherUiState.Success(
                     weatherData = weatherData,
-                    forecast = forecast,
-                    selectedIndex = 0
+                    forecast = daily,
+                    hourlyToday = hourlyToday,
+                    selectedIndex = 0,
+                    selectedHourlyIndex = 0
                 )
             }
             is Resource.Error -> {
@@ -177,40 +165,28 @@ class WeatherViewModel @Inject constructor(
         when (val result = getWeatherByCityNameUseCase(cityName)) {
             is Resource.Success -> {
                 val weatherData = result.data
-                // Try to fetch forecast by city name
                 val forecastResult = getForecastByCityNameUseCase(cityName)
-                val forecast = when (forecastResult) {
+                val (daily, hourlyToday) = when (forecastResult) {
                     is Resource.Success -> {
-                        val forecastList = forecastResult.data
-                        if (forecastList.size >= 7) {
-                            forecastList.take(7)
+                        val data = forecastResult.data
+                        val dailyList = if (data.daily.isNotEmpty()) {
+                            if (data.daily.size >= 7) data.daily.take(7)
+                            else data.daily
                         } else {
-                            // Pad if needed
-                            val padded = forecastList.toMutableList()
-                            while (padded.size < 7) {
-                                val lastDay = padded.lastOrNull() ?: weatherData
-                                val oneDayMillis = 24L * 60L * 60L * 1000L
-                                padded.add(
-                                    lastDay.copy(
-                                        lastUpdated = lastDay.lastUpdated + (padded.size * oneDayMillis)
-                                    )
-                                )
-                            }
-                            padded.take(7)
+                            buildSevenDayForecast(weatherData)
                         }
+                        Pair(dailyList, data.hourlyToday)
                     }
-                    else -> {
-                        // Fallback to building forecast from current weather
-                        buildSevenDayForecast(weatherData)
-                    }
+                    else -> Pair(buildSevenDayForecast(weatherData), emptyList())
                 }
                 
-                // Save city name to DataStore
                 dataStoreHelper.saveLastCity(cityName)
                 _uiState.value = WeatherUiState.Success(
                     weatherData = weatherData,
-                    forecast = forecast,
-                    selectedIndex = 0
+                    forecast = daily,
+                    hourlyToday = hourlyToday,
+                    selectedIndex = 0,
+                    selectedHourlyIndex = 0
                 )
             }
             is Resource.Error -> {
@@ -281,10 +257,42 @@ class WeatherViewModel @Inject constructor(
     fun selectForecastDay(index: Int) {
         val current = _uiState.value
         if (current is WeatherUiState.Success && index in current.forecast.indices) {
-            val selectedWeather = current.forecast[index]
             _uiState.value = current.copy(
-                weatherData = selectedWeather,
+                weatherData = current.forecast[index],
                 selectedIndex = index
+            )
+        }
+    }
+
+    /**
+     * Toggle between daily forecast and hourly (today until midnight) view
+     */
+    fun setShowHourlyForecast(show: Boolean) {
+        val current = _uiState.value
+        if (current is WeatherUiState.Success) {
+            val newWeatherData = when {
+                show && current.hourlyToday.isNotEmpty() ->
+                    current.hourlyToday.getOrElse(current.selectedHourlyIndex) { current.weatherData }
+                current.forecast.isNotEmpty() ->
+                    current.forecast.getOrElse(current.selectedIndex) { current.weatherData }
+                else -> current.weatherData
+            }
+            _uiState.value = current.copy(
+                showHourlyForecast = show,
+                weatherData = newWeatherData
+            )
+        }
+    }
+
+    /**
+     * Handle selection of a specific hourly slot (when hourly view is shown)
+     */
+    fun selectHourlySlot(index: Int) {
+        val current = _uiState.value
+        if (current is WeatherUiState.Success && current.showHourlyForecast && index in current.hourlyToday.indices) {
+            _uiState.value = current.copy(
+                weatherData = current.hourlyToday[index],
+                selectedHourlyIndex = index
             )
         }
     }
@@ -312,7 +320,10 @@ sealed class WeatherUiState {
     data class Success(
         val weatherData: WeatherData,
         val forecast: List<WeatherData> = emptyList(),
-        val selectedIndex: Int = 0
+        val hourlyToday: List<WeatherData> = emptyList(),
+        val selectedIndex: Int = 0,
+        val selectedHourlyIndex: Int = 0,
+        val showHourlyForecast: Boolean = false
     ) : WeatherUiState()
     data class Error(val error: WeatherError) : WeatherUiState()
 }

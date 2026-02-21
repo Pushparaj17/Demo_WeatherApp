@@ -20,20 +20,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.push.dev.demo_weatherapp.domain.model.WeatherData
+import androidx.compose.ui.res.stringResource
+import com.push.dev.demo_weatherapp.R
 import com.push.dev.demo_weatherapp.utils.WeatherIconHelper
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
  * Component to display weather information
+ * @param showTimeOnly when true, shows time (e.g. "3 PM") instead of full date; for hourly slots
  */
 @Composable
 fun WeatherContent(
     weatherData: WeatherData,
+    showTimeOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val formattedDate = remember(weatherData.lastUpdated) {
-        formatTimestamp(weatherData.lastUpdated)
+    val formattedDate = remember(weatherData.lastUpdated, showTimeOnly) {
+        if (showTimeOnly) {
+            SimpleDateFormat("h a", Locale.getDefault()).format(Date(weatherData.lastUpdated))
+        } else {
+            formatTimestamp(weatherData.lastUpdated)
+        }
     }
 
     val descriptionText = remember(weatherData.description) {
@@ -150,7 +158,7 @@ fun WeatherContent(
             ) {
                 WeatherDetailItem(
                     icon = Icons.Default.WaterDrop,
-                    label = "Humidity",
+                    label = stringResource(R.string.humidity),
                     value = "${weatherData.humidity}%",
                     testTag = "humidity"
                 )
@@ -162,7 +170,7 @@ fun WeatherContent(
                 
                 WeatherDetailItem(
                     icon = Icons.Default.Air,
-                    label = "Wind",
+                    label = stringResource(R.string.wind_speed),
                     value = "${weatherData.windSpeed.toInt()} mph",
                     testTag = "wind_speed"
                 )

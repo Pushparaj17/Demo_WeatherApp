@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.push.dev.demo_weatherapp.R
 
 /**
  * Search bar component with city search and location button
@@ -40,7 +42,7 @@ fun SearchBar(
                 .testTag("search_input"),
             placeholder = { 
                 Text(
-                    text = "Enter US city name",
+                    text = stringResource(R.string.search_city_hint),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 ) 
@@ -68,7 +70,7 @@ fun SearchBar(
                     IconButton(onClick = { onQueryChange("") }) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.Close,
-                            contentDescription = "Clear",
+                            contentDescription = stringResource(R.string.search_clear),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -89,7 +91,7 @@ fun SearchBar(
         ) {
             Icon(
                 imageVector = Icons.Default.LocationOn,
-                contentDescription = "Use current location",
+                contentDescription = stringResource(R.string.location_button),
                 modifier = Modifier.size(24.dp)
             )
         }

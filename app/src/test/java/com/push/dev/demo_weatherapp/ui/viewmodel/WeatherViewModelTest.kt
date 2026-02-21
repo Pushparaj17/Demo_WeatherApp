@@ -1,8 +1,11 @@
 package com.push.dev.demo_weatherapp.ui.viewmodel
 
 import android.app.Application
+import com.push.dev.demo_weatherapp.domain.model.ForecastData
 import com.push.dev.demo_weatherapp.domain.model.WeatherData
 import com.push.dev.demo_weatherapp.domain.model.WeatherError
+import com.push.dev.demo_weatherapp.domain.usecase.GetForecastByCityNameUseCase
+import com.push.dev.demo_weatherapp.domain.usecase.GetForecastByCoordinatesUseCase
 import com.push.dev.demo_weatherapp.domain.usecase.GetWeatherByCityNameUseCase
 import com.push.dev.demo_weatherapp.domain.usecase.GetWeatherByCoordinatesUseCase
 import com.push.dev.demo_weatherapp.utils.DataStoreHelper
@@ -24,6 +27,8 @@ class WeatherViewModelTest {
     private lateinit var application: Application
     private lateinit var getWeatherByCoordinatesUseCase: GetWeatherByCoordinatesUseCase
     private lateinit var getWeatherByCityNameUseCase: GetWeatherByCityNameUseCase
+    private lateinit var getForecastByCoordinatesUseCase: GetForecastByCoordinatesUseCase
+    private lateinit var getForecastByCityNameUseCase: GetForecastByCityNameUseCase
     private lateinit var locationHelper: LocationHelper
     private lateinit var dataStoreHelper: DataStoreHelper
     private lateinit var viewModel: WeatherViewModel
@@ -33,16 +38,19 @@ class WeatherViewModelTest {
         application = mockk(relaxed = true)
         getWeatherByCoordinatesUseCase = mockk()
         getWeatherByCityNameUseCase = mockk()
+        getForecastByCoordinatesUseCase = mockk()
+        getForecastByCityNameUseCase = mockk()
         locationHelper = mockk()
         dataStoreHelper = mockk()
         
-        // Mock DataStoreHelper to return null for last city (no saved city)
         coEvery { dataStoreHelper.getLastCitySync() } returns null
         
         viewModel = WeatherViewModel(
             application,
             getWeatherByCoordinatesUseCase,
             getWeatherByCityNameUseCase,
+            getForecastByCoordinatesUseCase,
+            getForecastByCityNameUseCase,
             locationHelper,
             dataStoreHelper
         )
@@ -67,18 +75,20 @@ class WeatherViewModelTest {
         // Given
         val mockWeatherData = createMockWeatherData()
         val cityName = "New York"
+        val mockForecast = ForecastData(
+            daily = List(7) { mockWeatherData },
+            hourlyToday = emptyList()
+        )
         
         coEvery { locationHelper.getCoordinatesFromCityName(cityName) } returns 
             Result.success(Pair(40.7128, -74.0060))
-        coEvery { 
-            getWeatherByCoordinatesUseCase(40.7128, -74.0060) 
-        } returns Resource.Success(mockWeatherData)
+        coEvery { getWeatherByCoordinatesUseCase(40.7128, -74.0060) } returns Resource.Success(mockWeatherData)
+        coEvery { getForecastByCoordinatesUseCase(40.7128, -74.0060) } returns Resource.Success(mockForecast)
         coEvery { dataStoreHelper.saveLastCity(cityName) } just Runs
         
         // When
         viewModel.searchWeatherByCity(cityName)
         
-        // Wait a bit for state updates
         kotlinx.coroutines.delay(100)
         
         // Then
@@ -93,9 +103,8 @@ class WeatherViewModelTest {
         val cityName = "InvalidCity"
         coEvery { locationHelper.getCoordinatesFromCityName(cityName) } returns 
             Result.failure(Exception("City not found"))
-        coEvery { 
-            getWeatherByCityNameUseCase(cityName) 
-        } returns Resource.Error(WeatherError.CityNotFound("City not found"))
+        coEvery { getWeatherByCityNameUseCase(cityName) } returns 
+            Resource.Error(WeatherError.CityNotFound("City not found"))
         
         // When
         viewModel.searchWeatherByCity(cityName)
@@ -124,9 +133,8 @@ class WeatherViewModelTest {
         val cityName = "InvalidCity"
         coEvery { locationHelper.getCoordinatesFromCityName(cityName) } returns 
             Result.failure(Exception("City not found"))
-        coEvery { 
-            getWeatherByCityNameUseCase(cityName) 
-        } returns Resource.Error(WeatherError.CityNotFound("City not found"))
+        coEvery { getWeatherByCityNameUseCase(cityName) } returns 
+            Resource.Error(WeatherError.CityNotFound("City not found"))
         
         viewModel.searchWeatherByCity(cityName)
         kotlinx.coroutines.delay(100)

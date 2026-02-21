@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Weather App</string>
-    <string name="search_city_hint">Enter US city name</string>
+    <string name="search_city_hint">Enter city name or code</string>
     <string name="search_button">Search</string>
     <string name="location_button">Use current location</string>
     <string name="loading">Loading weather data…</string>
@@ -10,7 +10,12 @@
     <string name="humidity">Humidity</string>
     <string name="wind_speed">Wind Speed</string>
     <string name="last_updated">Last updated: %1$s</string>
-    <string name="idle_message">Search for a US city or use your location</string>
+    <string name="idle_title">Welcome to Weather App</string>
+    <string name="idle_message">Search for a US city or use your location to get started.</string>
+    <string name="forecast_next_7_days">Next 7 days</string>
+    <string name="forecast_rest_of_today">Rest of today</string>
+    <string name="forecast_today_until_midnight">Today until midnight</string>
+    <string name="search_clear">Clear</string>
     <string name="city_not_found">City not found</string>
     <string name="network_error">Network error. Please check your internet connection.</string>
     <string name="location_permission_denied">Location permission denied</string>
